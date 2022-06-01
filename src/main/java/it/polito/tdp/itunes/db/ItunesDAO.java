@@ -5,8 +5,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+
+import it.polito.tdp.itunes.model.Adiacenza;
 import it.polito.tdp.itunes.model.Album;
 import it.polito.tdp.itunes.model.Artist;
 import it.polito.tdp.itunes.model.Genre;
@@ -15,11 +19,11 @@ import it.polito.tdp.itunes.model.Playlist;
 import it.polito.tdp.itunes.model.Track;
 
 public class ItunesDAO {
-	
-	public List<Album> getAllAlbums(){
+
+	public List<Album> getAllAlbums() {
 		final String sql = "SELECT * FROM Album";
 		List<Album> result = new LinkedList<>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
@@ -35,11 +39,11 @@ public class ItunesDAO {
 		}
 		return result;
 	}
-	
-	public List<Artist> getAllArtists(){
+
+	public List<Artist> getAllArtists() {
 		final String sql = "SELECT * FROM Artist";
 		List<Artist> result = new LinkedList<>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
@@ -55,11 +59,11 @@ public class ItunesDAO {
 		}
 		return result;
 	}
-	
-	public List<Playlist> getAllPlaylists(){
+
+	public List<Playlist> getAllPlaylists() {
 		final String sql = "SELECT * FROM Playlist";
 		List<Playlist> result = new LinkedList<>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
@@ -75,21 +79,20 @@ public class ItunesDAO {
 		}
 		return result;
 	}
-	
-	public List<Track> getAllTracks(){
+
+	public List<Track> getAllTracks() {
 		final String sql = "SELECT * FROM Track";
 		List<Track> result = new ArrayList<Track>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
 			ResultSet res = st.executeQuery();
 
 			while (res.next()) {
-				result.add(new Track(res.getInt("TrackId"), res.getString("Name"), 
-						res.getString("Composer"), res.getInt("Milliseconds"), 
-						res.getInt("Bytes"),res.getDouble("UnitPrice")));
-			
+				result.add(new Track(res.getInt("TrackId"), res.getString("Name"), res.getString("Composer"),
+						res.getInt("Milliseconds"), res.getInt("Bytes"), res.getDouble("UnitPrice")));
+
 			}
 			conn.close();
 		} catch (SQLException e) {
@@ -98,11 +101,11 @@ public class ItunesDAO {
 		}
 		return result;
 	}
-	
-	public List<Genre> getAllGenres(){
+
+	public List<Genre> getAllGenres() {
 		final String sql = "SELECT * FROM Genre";
 		List<Genre> result = new LinkedList<>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
@@ -118,11 +121,34 @@ public class ItunesDAO {
 		}
 		return result;
 	}
-	
-	public List<MediaType> getAllMediaTypes(){
+
+	public Map<Integer, Track> getIdMap() {
+		final String sql = "SELECT * FROM track";
+		Map<Integer, Track> result = new HashMap<Integer, Track>();
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+
+			while (res.next()) {
+				result.put(res.getInt("TrackId"),
+						new Track(res.getInt("TrackId"), res.getString("Name"), res.getString("Composer"),
+								res.getInt("Milliseconds"), res.getInt("Bytes"), res.getDouble("UnitPrice")));
+
+			}
+			conn.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("SQL Error");
+		}
+		return result;
+	}
+
+	public List<MediaType> getAllMediaTypes() {
 		final String sql = "SELECT * FROM MediaType";
 		List<MediaType> result = new LinkedList<>();
-		
+
 		try {
 			Connection conn = DBConnect.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
@@ -139,6 +165,54 @@ public class ItunesDAO {
 		return result;
 	}
 
-	
-	
+	public List<Track> getVertici(Genre genre, Map<Integer, Track> genreMap) {
+		String sql = "SELECT TrackId FROM track WHERE GenreId = ? ";
+		List<Track> ris = new ArrayList<>();
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, genre.getGenreId());
+			ResultSet res = st.executeQuery();
+
+			while (res.next()) {
+				
+					ris.add(genreMap.get(res.getInt("TrackId")));
+				
+			}
+			conn.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("SQL Error");
+		}
+		return ris;
+	}
+
+	public List<Adiacenza> getArchi(Genre genere, 
+			Map<Integer,Track> idMap){
+		
+		String sql = "select t1.TrackId as t1, t2.TrackId as t2, abs(t1.milliseconds - t2.milliseconds) as delta "
+				+ "from track t1, track t2 "
+				+ "where t1.TrackId > t2.TrackId and t1.MediaTypeId = t2.MediaTypeId and t1.GenreId = ? and t1.GenreId = t2.GenreId";
+		List<Adiacenza> result = new ArrayList<>();
+		
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, genere.getGenreId());
+			ResultSet res = st.executeQuery();
+			
+			while(res.next()) {
+				result.add(new Adiacenza(idMap.get(res.getInt("t1")), 
+						idMap.get(res.getInt("t2")), res.getInt("delta")));
+			}
+			
+			conn.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("SQL Error");
+		}
+		return result;
+		
+	}
+
 }
